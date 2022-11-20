@@ -1,0 +1,24 @@
+[package]
+name = "etty"
+description = "an easy tty library"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+keywords = ["tty", "tui" ]
+readme = "README.md"
+authors = ["rueyxian <yrueyxian@gmail.com>"]
+
+
+
+[dependencies]
+etty-macro = { path = "../etty-macro/" }
+parking_lot = "0.12.1"
+
+# tokio = { version = "1.21.2", features = ["rt-multi-thread", "sync", "macros", "time" ] }
+tokio = { version = "1.21.2", features = ["sync"] }
+crossbeam = { version = "0.8.2", features = ["crossbeam-channel"] }
+once_cell = "1.13.1"
+
+libc = "0.2.137"
+num-traits = "0.2.15"
+num-derive = "0.3.3"
