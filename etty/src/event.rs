@@ -244,21 +244,7 @@ where
             };
             let event = EventAndRaw::new(parse, raw);
             Ok(event)
-        } // _ => {
-          //     let (parse, raw) = {
-          //         let EventAndRaw { event: parse, raw } = parse_utf8(next, iter)?;
-          //         let Event::Key(Key::Utf8(c)) = parse else {
-          //             unreachable!();
-          //         };
-          //         let raw = [b'\x1b']
-          //             .into_iter()
-          //             .chain(raw.into_iter())
-          //             .collect::<Vec<_>>();
-          //         (Event::Key(Key::Alt(c)), raw)
-          //     };
-          //     let event = EventAndRaw::new(parse, raw);
-          //     Ok(event)
-          // }
+        }
     }
 }
 
@@ -452,7 +438,7 @@ fn parse_mouse_sgr<I>(iter: &mut I) -> EventAndRaw
 where
     I: Iterator<Item = std::io::Result<u8>>,
 {
-    static OFF_SET: u8 = 48;
+    // static OFF_SET: u8 = 48;
     let mut raw = Vec::with_capacity(16);
     let (b_m, bytes) = {
         let mut m: Option<u8> = None;
@@ -473,14 +459,15 @@ where
     raw.push(b_m);
 
     let mut vals = bytes.rsplit(|b| *b == b';').map(|bytes| {
-        let mut xten: u16 = 1;
-        let num = (0..bytes.len()).rev().fold(0_u16, |mut acc, i| {
-            let byte = bytes[i];
-            raw.push(byte);
-            acc += (byte - OFF_SET) as u16 * xten;
-            xten *= 10;
-            acc
-        });
+        let num = crate::bytes_to_uint::<u16>(&bytes).unwrap();
+        // let mut xten: u16 = 1;
+        // let num = (0..bytes.len()).rev().fold(0_u16, |mut acc, i| {
+        //     let byte = bytes[i];
+        //     raw.push(byte);
+        //     acc += (byte - OFF_SET) as u16 * xten;
+        //     xten *= 10;
+        //     acc
+        // });
         raw.push(b';');
         num
     });

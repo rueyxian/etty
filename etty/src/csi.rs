@@ -4,29 +4,33 @@ use std::io::Write;
 use crate::input;
 
 pub fn read_cusr_pos() -> (u16, u16) {
-    let (mut stdin, jh) = input::async_stdin()
-        .timeout(std::time::Duration::from_millis(100))
-        .until(|b| b.map(|&b| b == b'R').unwrap_or(false))
-        .init();
+    let (mut stdin, jh) = {
+        let (stdin, jh) = input::async_stdin()
+            .timeout(std::time::Duration::from_millis(100))
+            .until(|b| b.map(|&b| b == b'R').unwrap_or(false))
+            .init();
+        (stdin.bytes(), jh)
+    };
+    let mut next = || stdin.next().unwrap().unwrap();
 
     cusr_pos();
     std::io::stdout().flush().unwrap();
 
-    let mut buf = Vec::with_capacity(8); // at least 6 bytes are needed, but make it 8 up front
-    stdin.read_to_end(&mut buf).unwrap();
-
-    jh.join().unwrap();
-
-    assert_eq!(buf[0], b'\x1b');
-    assert_eq!(buf[1], b'[');
-    assert_eq!(buf.last().unwrap(), &b'R');
-    let s = String::from_utf8(buf).unwrap();
-    let mut yx = {
-        let trim = &s[2..s.len() - 1];
-        trim.split(';')
+    while next() != b'\x1b' {}
+    assert_eq!(next(), b'[');
+    let mut f = |til: u8| -> u16 {
+        let mut buf = Vec::<u8>::with_capacity(4);
+        loop {
+            match next() {
+                b if b == til => break,
+                b @ b'0'..=b'9' => buf.push(b),
+                _ => unreachable!(),
+            }
+        }
+        crate::bytes_to_uint::<u16>(&buf).unwrap()
     };
-    let y = yx.next().unwrap().parse::<u16>().unwrap();
-    let x = yx.next().unwrap().parse::<u16>().unwrap();
+    jh.join().unwrap();
+    let (y, x) = (f(b';'), f(b'R'));
     (x, y)
 }
 
@@ -58,8 +62,8 @@ etty_macro::gen_csi! {
 
 // clear
 etty_macro::gen_csi! {
-    pub erse_bfr_cusr => "0J";
-    pub erse_aft_cusr => "1J";
+    pub erse_aft_cusr => "0J";
+    pub erse_bfr_cusr => "1J";
     pub erse_all => "2J";
     pub erse_all_and_saved => "3J";
     pub erse_ln_bfr_cusr => "0K";
@@ -107,7 +111,7 @@ etty_macro::gen_color_const! {
 
 etty_macro::gen_color_const! {
     39 =>
-    CLR_DEFAULT,
+    DEFAULT,
 }
 
 etty_macro::gen_color_const! {

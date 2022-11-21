@@ -1,3 +1,6 @@
+mod util;
+pub(crate) use crate::util::*;
+
 mod unix;
 
 mod term;
@@ -23,4 +26,5 @@ pub use c0::C0;
 
 // re-export from `etty_macro` crate
 pub use etty_macro::sgr;
+pub use etty_macro::sgr_bytes;
 pub use etty_macro::write_fmt;
