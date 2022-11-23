@@ -18,13 +18,13 @@ pub use output::*;
 pub mod event;
 pub use event::event_stream;
 
-mod csi;
+pub mod csi;
 pub use csi::*;
 
 pub mod c0;
 pub use c0::C0;
 
 // re-export from `etty_macro` crate
-pub use etty_macro::sgr;
-pub use etty_macro::sgr_bytes;
-pub use etty_macro::write_fmt;
+pub use etty_macros::sgr;
+pub use etty_macros::sgr_bytes;
+pub use etty_macros::write_fmt;

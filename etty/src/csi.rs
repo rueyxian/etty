@@ -3,6 +3,15 @@ use std::io::Write;
 
 use crate::input;
 
+pub trait Csi: std::fmt::Display {
+    fn write(&self) {
+        std::write!(std::io::stdout(), "{}", self).unwrap();
+    }
+    fn bytes(&self) -> std::vec::Vec<u8> {
+        self.to_string().into_bytes()
+    }
+}
+
 pub fn read_cusr_pos() -> (u16, u16) {
     let (mut stdin, jh) = {
         let (stdin, jh) = input::async_stdin()
@@ -13,7 +22,7 @@ pub fn read_cusr_pos() -> (u16, u16) {
     };
     let mut next = || stdin.next().unwrap().unwrap();
 
-    cusr_pos();
+    cusr_report_pos().write();
     std::io::stdout().flush().unwrap();
 
     while next() != b'\x1b' {}
@@ -34,9 +43,10 @@ pub fn read_cusr_pos() -> (u16, u16) {
     (x, y)
 }
 
-// navigations
-etty_macro::gen_csi! {
-    cusr_pos => "6n";
+// cursor
+etty_macros::gen_csi! {
+    pub mod cusr;
+    pub(crate) cusr_report_pos => "6n";
 
     pub cusr_up => "{n}A", n;
     pub cusr_dn => "{n}B", n;
@@ -61,18 +71,21 @@ etty_macro::gen_csi! {
 }
 
 // clear
-etty_macro::gen_csi! {
+etty_macros::gen_csi! {
+    mod erse;
     pub erse_aft_cusr => "0J";
     pub erse_bfr_cusr => "1J";
     pub erse_all => "2J";
     pub erse_all_and_saved => "3J";
-    pub erse_ln_bfr_cusr => "0K";
-    pub erse_ln_aft_cusr => "1K";
+    pub erse_ln_aft_cusr => "0K";
+    pub erse_ln_bfr_cusr => "1K";
     pub erse_ln => "2K";
+    pub erse_char => "{n}J", n;
 }
 
 // private modes
-etty_macro::gen_csi! {
+etty_macros::gen_csi! {
+    mod private;
     pub scrn_save => "?47h";
     pub scrn_load => "?47l";
     pub alt_buf_set => "?1049h";
@@ -81,7 +94,7 @@ etty_macro::gen_csi! {
 
 pub const SGR_RST: u8 = 0;
 
-etty_macro::gen_style_const! {
+etty_macros::gen_style_const! {
     1
     BOLD,
     DIM,
@@ -90,14 +103,14 @@ etty_macro::gen_style_const! {
     BLINKING,
 }
 
-etty_macro::gen_style_const! {
+etty_macros::gen_style_const! {
     7
     INVERSE,
     HIDDEN,
     STRIKETHRU,
 }
 
-etty_macro::gen_color_const! {
+etty_macros::gen_color_const! {
     30 =>
     BLK,
     RED,
@@ -109,12 +122,12 @@ etty_macro::gen_color_const! {
     WHT,
 }
 
-etty_macro::gen_color_const! {
+etty_macros::gen_color_const! {
     39 =>
     DEFAULT,
 }
 
-etty_macro::gen_color_const! {
+etty_macros::gen_color_const! {
     90 =>
     BRGT_BLK,
     BRGT_RED,
@@ -126,7 +139,8 @@ etty_macro::gen_color_const! {
     BRGT_WHT,
 }
 
-etty_macro::gen_csi! {
+etty_macros::gen_csi! {
+    mod sgr;
     pub sgr_rst => "0m";
 
     pub sty_bold_set => "1m";
@@ -200,7 +214,8 @@ etty_macro::gen_csi! {
     pub bg_rgb => "48;2;{r};{g};{b}m", r:u8, g:u8, b:u8;
 }
 
-etty_macro::gen_csi! {
+etty_macros::gen_csi! {
+    mod scrn;
     pub scrn_mono_40x25_set => "=0h";
     pub scrn_mono_40x25_rst => "=0l";
 
@@ -248,7 +263,8 @@ etty_macro::gen_csi! {
 }
 
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Mouse-Tracking
-etty_macro::gen_csi! {
+etty_macros::gen_csi! {
+    mod evt;
     pub evt_mouse_set => "?1000h";
     pub evt_mouse_ext_set => "?1006h";
     pub evt_mouse_drag_set => "?1002h";

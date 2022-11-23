@@ -11,28 +11,70 @@ struct GenCsi {
     tts: proc_macro2::TokenStream,
 }
 
+// impl syn::parse::Parse for GenCsi {
+//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+//         use syn::punctuated::Punctuated;
+//         let tts = Punctuated::<Csi, Token![;]>::parse_terminated(input)?
+//             .into_iter()
+//             .map(|csi| {
+//                 let tts = csi.tts;
+//                 quote!(#tts)
+//             })
+//             .collect::<proc_macro2::TokenStream>();
+//         Ok(GenCsi { tts })
+//     }
+// }
+
 impl syn::parse::Parse for GenCsi {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         use syn::punctuated::Punctuated;
-        let tts = Punctuated::<Csi, Token![;]>::parse_terminated(input)?
-            .into_iter()
+        let mod_visi = input.parse::<syn::Visibility>()?;
+        let _mod = input.parse::<Token![mod]>()?;
+        let mod_nm = input.parse::<proc_macro2::Ident>()?;
+        let _semi = input.parse::<Token![;]>()?;
+
+        let csis = Punctuated::<Csi, Token![;]>::parse_terminated(input)?;
+        let csi_import = csis
+            .iter()
+            .filter_map(|csi| {
+                if let syn::Visibility::Inherited = csi.visi {
+                    None
+                } else {
+                    let visi = &csi.visi;
+                    let nm_snake = &csi.nm_snake;
+                    Some(quote!(#visi use #mod_nm::#nm_snake;))
+                }
+            })
+            .collect::<proc_macro2::TokenStream>();
+        let csi_impls = csis
+            .iter()
             .map(|csi| {
-                let tts = csi.tts;
+                let tts = &csi.tts;
                 quote!(#tts)
             })
             .collect::<proc_macro2::TokenStream>();
+        let tts = quote! {
+            #csi_import
+            #mod_visi mod #mod_nm {
+                use std::io::Write;
+                #csi_impls
+            }
+        };
         Ok(GenCsi { tts })
     }
 }
 
 struct Csi {
+    visi: syn::Visibility,
+    nm_snake: proc_macro2::Ident,
     tts: proc_macro2::TokenStream,
 }
 
 impl syn::parse::Parse for Csi {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let visi = input.parse::<syn::Visibility>()?;
-        let (_nm_pascal, nm_snake) = {
+        // let visi = proc_macro2::Ident::new("pub", proc_macro2::Span::call_site());
+        let (nm_pascal, nm_snake) = {
             let ident = input.parse::<syn::Ident>()?;
             let pascal = match snake_to_pascal(&ident.to_string()) {
                 Some(s) => proc_macro2::Ident::new(&s, ident.span()),
@@ -73,7 +115,7 @@ impl syn::parse::Parse for Csi {
                     .enumerate()
                     .find_map(|(i, arg)| (nm_ord == &arg.nm.to_string()).then_some(i));
                 let Some(idx) = idx else {
-                    return Err(syn::Error::new(proc_macro2::Span::call_site(), "unmatch args' name"));                
+                    return Err(syn::Error::new(proc_macro2::Span::call_site(), "unmatch args' name"));
                 };
                 let arg = args.remove(idx);
                 arg_nms.push(arg.nm);
@@ -82,45 +124,64 @@ impl syn::parse::Parse for Csi {
         };
 
         let tts = {
-            // let struct_tts = match args.is_empty() {
-            //     true => quote! { #visi struct #nm_pascal; },
-            //     false => {
-            //         let tys = args.iter().map(|arg| arg.ty.clone());
-            //         quote! { #visi struct #nm_pascal(#(#tys,)*); }
-            //     }
-            // };
-            // let impl_display_tts = {
-            //     let write_args = (0..args.len()).map(|num| {
-            //         let lit = proc_macro2::Literal::usize_unsuffixed(num);
-            //         quote! { self.#lit }
-            //     });
-            //     quote! {
-            //         impl std::fmt::Display for #nm_pascal {
-            //             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            //                 f.write_fmt(std::format_args!(#fmt, #(#write_args,)*))
-            //             }
-            //         }
-            //     }
-            // };
-            let fn_tts = {
+            let struct_tts = match args.is_empty() {
+                true => quote! { #visi struct #nm_pascal; },
+                false => {
+                    let tys = args.iter().map(|arg| arg.ty.clone());
+                    quote! { #visi struct #nm_pascal(#(#tys,)*); }
+                }
+            };
+            let impl_display_tts = {
+                let write_args = (0..args.len()).map(|num| {
+                    let lit = proc_macro2::Literal::usize_unsuffixed(num);
+                    quote! { self.#lit }
+                });
+                quote! {
+                    impl std::fmt::Display for #nm_pascal {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            std::write!(f, #fmt, #(#write_args,)*)
+                        }
+                    }
+                }
+            };
+            let impl_methods_tts = {
+                let path = quote! { crate::csi:: };
+                quote! {
+                    impl #path Csi for #nm_pascal {}
+                    // impl #nm_pascal {
+                    //     #visi fn write(&self) {
+                    //         std::write!(std::io::stdout(), "{}", self).unwrap();
+                    //     }
+                    //     #visi fn bytes(&self) -> std::vec::Vec<u8> {
+                    //         self.to_string().into_bytes()
+                    //     }
+                    // }
+                }
+            };
+            let factory_tts = {
                 let arg_exprs = args.iter().map(|arg| {
                     let nm = &arg.nm;
                     let ty = &arg.ty;
                     quote! { #nm: #ty }
                 });
-                quote! {
-                    #visi fn #nm_snake (#(#arg_exprs,)*) {
-                        std::write!(std::io::stdout(), "{}", std::format!(#fmt, #(#fmt_arg_nms,)*)).unwrap();
-                    }
-                }
+                let ret = match args.is_empty() {
+                    true => quote! { #nm_pascal },
+                    false => quote! { #nm_pascal(#(#fmt_arg_nms,)*) },
+                };
+                quote! { #visi fn #nm_snake (#(#arg_exprs,)*) -> #nm_pascal{ #ret } }
             };
             quote! {
-                // #struct_tts
-                // #impl_display_tts
-                #fn_tts
+                #factory_tts
+                #struct_tts
+                #impl_methods_tts
+                #impl_display_tts
             }
         };
-        Ok(Csi { tts })
+        Ok(Csi {
+            visi,
+            nm_snake,
+            tts,
+        })
     }
 }
 
