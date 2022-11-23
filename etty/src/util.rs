@@ -4,6 +4,7 @@ where
         + std::ops::AddAssign
         + std::ops::MulAssign
         + num_traits::FromPrimitive
+        // + num_traits::NumCast
         + num_traits::Unsigned,
 {
     assert!(!bytes.is_empty());
@@ -11,6 +12,7 @@ where
     let mut xten = T::one();
     let mut acc = T::zero();
     let ten = T::from_u16(10_u16).unwrap();
+    // let ten = num::cast::<_, T>(10_u16).unwrap();
     for i in (0..bytes.len()).rev() {
         let b = bytes[i];
         if b > b'9' || b < b'0' {

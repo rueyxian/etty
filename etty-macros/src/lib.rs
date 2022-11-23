@@ -11,20 +11,6 @@ struct GenCsi {
     tts: proc_macro2::TokenStream,
 }
 
-// impl syn::parse::Parse for GenCsi {
-//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-//         use syn::punctuated::Punctuated;
-//         let tts = Punctuated::<Csi, Token![;]>::parse_terminated(input)?
-//             .into_iter()
-//             .map(|csi| {
-//                 let tts = csi.tts;
-//                 quote!(#tts)
-//             })
-//             .collect::<proc_macro2::TokenStream>();
-//         Ok(GenCsi { tts })
-//     }
-// }
-
 impl syn::parse::Parse for GenCsi {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         use syn::punctuated::Punctuated;
@@ -73,7 +59,6 @@ struct Csi {
 impl syn::parse::Parse for Csi {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let visi = input.parse::<syn::Visibility>()?;
-        // let visi = proc_macro2::Ident::new("pub", proc_macro2::Span::call_site());
         let (nm_pascal, nm_snake) = {
             let ident = input.parse::<syn::Ident>()?;
             let pascal = match snake_to_pascal(&ident.to_string()) {
@@ -106,8 +91,8 @@ impl syn::parse::Parse for Csi {
             args
         };
 
-        let fmt_arg_nms = {
-            let mut arg_nms = Vec::<proc_macro2::Ident>::with_capacity(args.len());
+        let arg_nms = {
+            let mut nms = Vec::<proc_macro2::Ident>::with_capacity(args.len());
             let mut args = args.clone(); // clone `args` and reorder it according to `nms_ord`
             for ref nm_ord in nms_ord {
                 let idx = args
@@ -118,9 +103,9 @@ impl syn::parse::Parse for Csi {
                     return Err(syn::Error::new(proc_macro2::Span::call_site(), "unmatch args' name"));
                 };
                 let arg = args.remove(idx);
-                arg_nms.push(arg.nm);
+                nms.push(arg.nm);
             }
-            arg_nms
+            nms
         };
 
         let tts = {
@@ -144,20 +129,17 @@ impl syn::parse::Parse for Csi {
                     }
                 }
             };
-            let impl_methods_tts = {
-                let path = quote! { crate::csi:: };
-                quote! {
-                    impl #path Csi for #nm_pascal {}
-                    // impl #nm_pascal {
-                    //     #visi fn write(&self) {
-                    //         std::write!(std::io::stdout(), "{}", self).unwrap();
-                    //     }
-                    //     #visi fn bytes(&self) -> std::vec::Vec<u8> {
-                    //         self.to_string().into_bytes()
-                    //     }
-                    // }
-                }
-            };
+            // let impl_methods_tts = {
+            //     // let path = quote! { crate::csi:: };
+            //     quote! {
+            //         // impl #path Csi for #nm_pascal {}
+            //         impl #nm_pascal {
+            //             #visi fn stdout(&self) {
+            //                 std::write!(std::io::stdout(), "{}", self).unwrap();
+            //             }
+            //         }
+            //     }
+            // };
             let factory_tts = {
                 let arg_exprs = args.iter().map(|arg| {
                     let nm = &arg.nm;
@@ -166,14 +148,18 @@ impl syn::parse::Parse for Csi {
                 });
                 let ret = match args.is_empty() {
                     true => quote! { #nm_pascal },
-                    false => quote! { #nm_pascal(#(#fmt_arg_nms,)*) },
+                    false => quote! { #nm_pascal(#(#arg_nms,)*) },
                 };
-                quote! { #visi fn #nm_snake (#(#arg_exprs,)*) -> #nm_pascal{ #ret } }
+                quote! {
+                    #visi fn #nm_snake (#(#arg_exprs,)*) -> #nm_pascal {
+                        #ret
+                    }
+                }
             };
             quote! {
                 #factory_tts
                 #struct_tts
-                #impl_methods_tts
+                // #impl_methods_tts
                 #impl_display_tts
             }
         };
@@ -302,15 +288,15 @@ fn snake_to_pascal(s: &str) -> Option<String> {
 // =============================================================
 
 #[proc_macro]
-pub fn gen_color_const(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    parse_macro_input!(input as GenColorConst).tts.into()
+pub fn gen_clr_const(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    parse_macro_input!(input as GenClrConst).tts.into()
 }
 
-struct GenColorConst {
+struct GenClrConst {
     tts: proc_macro2::TokenStream,
 }
 
-impl syn::parse::Parse for GenColorConst {
+impl syn::parse::Parse for GenClrConst {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut val = {
             let lit = input.parse::<syn::LitInt>()?;
@@ -349,22 +335,22 @@ impl syn::parse::Parse for GenColorConst {
                 }
             })
             .collect::<proc_macro2::TokenStream>();
-        Ok(GenColorConst { tts })
+        Ok(GenClrConst { tts })
     }
 }
 
 // =============================================================
 
 #[proc_macro]
-pub fn gen_style_const(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    parse_macro_input!(input as GenStyleConst).tts.into()
+pub fn gen_sty_const(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    parse_macro_input!(input as GenStyConst).tts.into()
 }
 
-struct GenStyleConst {
+struct GenStyConst {
     tts: proc_macro2::TokenStream,
 }
 
-impl syn::parse::Parse for GenStyleConst {
+impl syn::parse::Parse for GenStyConst {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut val = {
             let lit = input.parse::<syn::LitInt>()?;
@@ -402,7 +388,7 @@ impl syn::parse::Parse for GenStyleConst {
                 }
             })
             .collect::<proc_macro2::TokenStream>();
-        Ok(GenStyleConst { tts })
+        Ok(GenStyConst { tts })
     }
 }
 
@@ -439,8 +425,19 @@ impl syn::parse::Parse for Sgr {
             (buf.concat(), exprs.into_iter())
         };
         let tts = quote! {{
-             use std::io::Write;
-            std::write!(std::io::stdout(), #fmt, #(#exprs as u8,)*).unwrap();
+            use std::io::Write;
+            struct __Sgr;
+            // impl __Sgr {
+            //     pub fn stdout(&self) {
+            //         std::write!(std::io::stdout(), "{}", self).unwrap();
+            //     }
+            // }
+            impl std::fmt::Display for __Sgr {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    write!(f, #fmt, #(#exprs as u8,)*)
+                }
+            }
+            __Sgr
         }};
         Ok(Sgr { tts })
     }
@@ -449,48 +446,7 @@ impl syn::parse::Parse for Sgr {
 // =============================================================
 
 #[proc_macro]
-pub fn sgr_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    parse_macro_input!(input as SgrBytes).tts.into()
-}
-
-struct SgrBytes {
-    tts: proc_macro2::TokenStream,
-}
-
-impl syn::parse::Parse for SgrBytes {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let exprs = syn::punctuated::Punctuated::<syn::Expr, Token![,]>::parse_terminated(input)?;
-        if exprs.is_empty() {
-            let err = syn::parse::Error::new_spanned(exprs, "expect at least one expression");
-            return Err(err);
-        };
-        let exprs = exprs.into_iter();
-        let tts = quote! {{
-            let u8ints = [#(#exprs as u8),*];
-            const E10: [u16; 4] = [1, 10, 100, 1000];
-            let mut buf = Vec::<u8>::with_capacity(u8ints.len() * 3);
-            for (idx, &int) in u8ints.iter().enumerate() {
-                let d = (f32::log10(int as f32) + 1.0) as usize;
-                for i in (0..d).rev() {
-                    let d = ((int as u16 % E10[i + 1]) / E10[i]) as u8;
-                    buf.push(d + 48);
-                }
-                if idx < u8ints.len() - 1 {
-                    buf.push(b';');
-                } else {
-                    buf.push(b'm');
-                }
-            }
-            [b'\x1b', b'['].into_iter().chain(buf.into_iter())
-        }};
-        Ok(SgrBytes { tts })
-    }
-}
-
-// =============================================================
-
-#[proc_macro]
-pub fn write_fmt(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn outw(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as WriteFmt).tts.into()
 }
 

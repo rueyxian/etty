@@ -12,7 +12,7 @@ pub use term::TermMode;
 
 mod input;
 
-mod output;
+pub mod output;
 pub use output::*;
 
 pub mod event;
@@ -25,6 +25,5 @@ pub mod c0;
 pub use c0::C0;
 
 // re-export from `etty_macro` crate
+pub use etty_macros::outw;
 pub use etty_macros::sgr;
-pub use etty_macros::sgr_bytes;
-pub use etty_macros::write_fmt;

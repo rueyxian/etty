@@ -1,18 +1,10 @@
 use std::io::Read;
-use std::io::Write;
+// use std::io::Write;
 
 use crate::input;
 
-pub trait Csi: std::fmt::Display {
-    fn write(&self) {
-        std::write!(std::io::stdout(), "{}", self).unwrap();
-    }
-    fn bytes(&self) -> std::vec::Vec<u8> {
-        self.to_string().into_bytes()
-    }
-}
-
 pub fn read_cusr_pos() -> (u16, u16) {
+    use crate::StdoutWrite;
     let (mut stdin, jh) = {
         let (stdin, jh) = input::async_stdin()
             .timeout(std::time::Duration::from_millis(100))
@@ -22,21 +14,26 @@ pub fn read_cusr_pos() -> (u16, u16) {
     };
     let mut next = || stdin.next().unwrap().unwrap();
 
-    cusr_report_pos().write();
-    std::io::stdout().flush().unwrap();
+    cusr_report_pos().outw();
+    // std::io::stdout().flush().unwrap();
+    crate::flush();
 
     while next() != b'\x1b' {}
     assert_eq!(next(), b'[');
     let mut f = |til: u8| -> u16 {
-        let mut buf = Vec::<u8>::with_capacity(4);
+        let mut buf = [0_u8; 4];
+        let mut i = 0;
         loop {
             match next() {
                 b if b == til => break,
-                b @ b'0'..=b'9' => buf.push(b),
+                b @ b'0'..=b'9' => {
+                    buf[i] = b;
+                    i += 1;
+                }
                 _ => unreachable!(),
             }
         }
-        crate::bytes_to_uint::<u16>(&buf).unwrap()
+        crate::bytes_to_uint::<u16>(&buf[0..i]).unwrap()
     };
     jh.join().unwrap();
     let (y, x) = (f(b';'), f(b'R'));
@@ -72,15 +69,15 @@ etty_macros::gen_csi! {
 
 // clear
 etty_macros::gen_csi! {
-    mod erse;
-    pub erse_aft_cusr => "0J";
-    pub erse_bfr_cusr => "1J";
-    pub erse_all => "2J";
-    pub erse_all_and_saved => "3J";
-    pub erse_ln_aft_cusr => "0K";
-    pub erse_ln_bfr_cusr => "1K";
-    pub erse_ln => "2K";
-    pub erse_char => "{n}J", n;
+    mod ers;
+    pub ers_aft_cusr => "0J";
+    pub ers_bfr_cusr => "1J";
+    pub ers_all => "2J";
+    pub ers_all_and_saved => "3J";
+    pub ers_ln_aft_cusr => "0K";
+    pub ers_ln_bfr_cusr => "1K";
+    pub ers_ln => "2K";
+    pub ers_char => "{n}J", n;
 }
 
 // private modes
@@ -94,23 +91,23 @@ etty_macros::gen_csi! {
 
 pub const SGR_RST: u8 = 0;
 
-etty_macros::gen_style_const! {
+etty_macros::gen_sty_const! {
     1
     BOLD,
     DIM,
     ITALIC,
-    UNDERLINE,
-    BLINKING,
+    UNDERLN,
+    BLINK,
 }
 
-etty_macros::gen_style_const! {
+etty_macros::gen_sty_const! {
     7
-    INVERSE,
-    HIDDEN,
-    STRIKETHRU,
+    INVRS,
+    HIDE,
+    STRKTHRU,
 }
 
-etty_macros::gen_color_const! {
+etty_macros::gen_clr_const! {
     30 =>
     BLK,
     RED,
@@ -122,12 +119,12 @@ etty_macros::gen_color_const! {
     WHT,
 }
 
-etty_macros::gen_color_const! {
+etty_macros::gen_clr_const! {
     39 =>
-    DEFAULT,
+    RST,
 }
 
-etty_macros::gen_color_const! {
+etty_macros::gen_clr_const! {
     90 =>
     BRGT_BLK,
     BRGT_RED,
@@ -152,20 +149,20 @@ etty_macros::gen_csi! {
     pub sty_italic_set => "3m";
     pub sty_italic_rst => "23m";
 
-    pub sty_underline_set => "4m";
-    pub sty_underline_rst => "24m";
+    pub sty_underln_set => "4m";
+    pub sty_underln_rst => "24m";
 
-    pub sty_blinking_set => "5m";
-    pub sty_blinking_rst => "25m";
+    pub sty_blink_set => "5m";
+    pub sty_blink_rst => "25m";
 
-    pub sty_inverse_set => "7m";
-    pub sty_inverse_rst => "27m";
+    pub sty_invrs_set => "7m";
+    pub sty_invrs_rst => "27m";
 
-    pub sty_hidden_set => "8m";
-    pub sty_hidden_rst => "28m";
+    pub sty_hide_set => "8m";
+    pub sty_hide_rst => "28m";
 
-    pub sty_strikethru_set => "9m";
-    pub sty_strikethru_rst => "29m";
+    pub sty_strkthru_set => "9m";
+    pub sty_strkthru_rst => "29m";
 
     // color default
     pub fg_rst => "39m";
