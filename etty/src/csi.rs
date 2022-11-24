@@ -20,11 +20,39 @@
 //! [wiki]: https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences
 
 use std::io::Read;
-// use std::io::Write;
+use std::io::Write;
 
 use crate::input;
 
-pub fn read_cusr_pos() -> (u16, u16) {
+pub struct Csi(String);
+
+impl std::fmt::Display for Csi {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Csi {
+    pub fn new(s: String) -> Self {
+        Self(s)
+    }
+    pub fn out(&self) {
+        std::write!(std::io::stdout(), "{}", self).unwrap();
+    }
+    pub fn outln(&self) {
+        std::write!(std::io::stdout(), "{}\n", self).unwrap();
+    }
+    pub fn print(&self) {
+        self.out();
+        std::io::stdout().flush().unwrap();
+    }
+    pub fn println(&self) {
+        self.outln();
+        std::io::stdout().flush().unwrap();
+    }
+}
+
+pub fn read_cus_pos() -> (u16, u16) {
     use crate::StdoutWrite;
     let (mut stdin, jh) = {
         let (stdin, jh) = input::async_stdin()
@@ -35,7 +63,7 @@ pub fn read_cusr_pos() -> (u16, u16) {
     };
     let mut next = || stdin.next().unwrap().unwrap();
 
-    cusr_report_pos().outw();
+    cus_report_pos().out();
     // std::io::stdout().flush().unwrap();
     crate::flush();
 
@@ -63,42 +91,62 @@ pub fn read_cusr_pos() -> (u16, u16) {
 
 // cursor
 etty_macros::gen_csi! {
-    pub mod cusr;
-    pub(crate) cusr_report_pos => "6n";
+    pub mod cus;
+    pub(crate) cus_report_pos => "6n";
 
-    pub cusr_up => "{n}A", n;
-    pub cusr_dn => "{n}B", n;
-    pub cusr_rgt => "{n}C", n;
-    pub cusr_lft => "{n}D", n;
+    pub cus_up => "{n}A", n;
+    pub cus_dn => "{n}B", n;
+    pub cus_rgt => "{n}C", n;
+    pub cus_lft => "{n}D", n;
 
-    pub cusr_next_ln => "{n}E", n;
-    pub cusr_prev_ln => "{n}F", n;
-    pub cusr_goto_x => "{x}G", x;
+    pub cus_next_ln => "{n}E", n;
+    pub cus_prev_ln => "{n}F", n;
+    pub cus_goto_x => "{x}G", x;
 
-    pub cusr_home => "H";
-    pub cusr_goto => "{y};{x}H", x, y;
+    pub cus_home => "H";
+    pub cus_goto => "{y};{x}H", x, y;
 
-    pub cusr_save => " 7";
-    pub cusr_load => " 8";
+    pub cus_save => " 7";
+    pub cus_load => " 8";
 
-    pub cusr_show => "?25h";
-    pub cusr_hide => "?25l";
+    pub cus_show => "?25h";
+    pub cus_hide => "?25l";
 
-    pub scrl_up => "{n}S", n;
-    pub scrl_dn => "{n}T", n;
 }
 
 // clear
 etty_macros::gen_csi! {
     mod ers;
-    pub ers_aft_cusr => "0J";
-    pub ers_bfr_cusr => "1J";
+    pub ers_aft_cus => "0J";
+    pub ers_bfr_cus => "1J";
     pub ers_all => "2J";
     pub ers_all_and_saved => "3J";
-    pub ers_ln_aft_cusr => "0K";
-    pub ers_ln_bfr_cusr => "1K";
+    pub ers_ln_aft_cus => "0K";
+    pub ers_ln_bfr_cus => "1K";
     pub ers_ln => "2K";
-    pub ers_char => "{n}J", n;
+    pub ers_char => "{n}X", n;
+}
+
+// delete
+etty_macros::gen_csi! {
+    mod del;
+    pub del_char => "{n}P", n;
+    pub del_ln => "{n}M", n;
+    // pub ers_aft_cusr => "0J";
+    // pub ers_bfr_cusr => "1J";
+    // pub ers_all => "2J";
+    // pub ers_all_and_saved => "3J";
+    // pub ers_ln_aft_cusr => "0K";
+    // pub ers_ln_bfr_cusr => "1K";
+    // pub ers_ln => "2K";
+    // pub ers_char => "{n}X", n;
+}
+
+// scroll
+etty_macros::gen_csi! {
+    mod scrl;
+    pub scrl_up => "{n}S", n;
+    pub scrl_dn => "{n}T", n;
 }
 
 // private modes
@@ -233,18 +281,17 @@ etty_macros::gen_csi! {
     pub scrn_256clr_320x200_rst => "=19l";
 }
 
-// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Mouse-Tracking
 etty_macros::gen_csi! {
     mod evt;
     pub evt_mouse_set => "?1000h";
     pub evt_mouse_ext_set => "?1006h";
     pub evt_mouse_drag_set => "?1002h";
     pub evt_mouse_motion_set => "?1003h";
-    pub evt_window_focus_set => "?1004h";
+    pub evt_win_focus_set => "?1004h";
 
     pub evt_mouse_rst => "?1000l";
     pub evt_mouse_ext_rst => "?1006l";
     pub evt_mouse_drag_rst => "?1002l";
     pub evt_mouse_motion_rst => "?1003l";
-    pub evt_window_focus_rst => "?1004l";
+    pub evt_win_focus_rst => "?1004l";
 }

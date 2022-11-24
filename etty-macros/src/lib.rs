@@ -154,6 +154,21 @@ impl syn::parse::Parse for Csi {
         //     }
         // };
 
+        // let tts = {
+        //     let doc = format!("ESC [ {}", doc);
+        //     let arg_exprs = args.iter().map(|arg| {
+        //         let nm = &arg.nm;
+        //         let ty = &arg.ty;
+        //         quote! { #nm: #ty }
+        //     });
+        //     quote! {
+        //         #[doc = #doc]
+        //         #visi fn #nm_snake (#(#arg_exprs,)*) ->  std::string::String {
+        //             std::format!(#fmt, #(#arg_nms,)*)
+        //         }
+        //     }
+        // };
+
         let tts = {
             let doc = format!("ESC [ {}", doc);
             let arg_exprs = args.iter().map(|arg| {
@@ -163,8 +178,8 @@ impl syn::parse::Parse for Csi {
             });
             quote! {
                 #[doc = #doc]
-                #visi fn #nm_snake (#(#arg_exprs,)*) ->  std::string::String {
-                    std::format!(#fmt, #(#arg_nms,)*)
+                #visi fn #nm_snake (#(#arg_exprs,)*) ->  Csi {
+                    Csi::new(std::format!(#fmt, #(#arg_nms,)*))
                 }
             }
         };
@@ -484,7 +499,7 @@ impl syn::parse::Parse for Sgr {
         //     }
         //     __Sgr
         // }};
-        let tts = quote! { std::format!(#fmt, #(#exprs as u8,)*) };
+        let tts = quote! {{ etty::csi::Csi::new(std::format!(#fmt, #(#exprs as u8,)*)) }};
         Ok(Sgr { tts })
     }
 }
@@ -493,7 +508,7 @@ impl syn::parse::Parse for Sgr {
 
 /// A convenience macro for [`stdout`](std::io::stdout).
 #[proc_macro]
-pub fn outw(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn out(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as WriteFmt).tts.into()
 }
 
@@ -507,7 +522,7 @@ impl syn::parse::Parse for WriteFmt {
             .into_iter();
         let tts = quote! {{
             use std::io::Write;
-            std::write!(std::io::stdout(), "{}", #(#exprs,)*).unwrap();
+            std::write!(std::io::stdout(), #(#exprs,)*).unwrap();
         }};
         Ok(WriteFmt { tts })
     }

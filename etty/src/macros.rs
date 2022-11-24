@@ -5,5 +5,5 @@
 //! [mod-stdout]: std::io::stdout
 //! [mod-etty-macro]: etty_macros
 
-pub use etty_macros::outw;
+pub use etty_macros::out;
 pub use etty_macros::sgr;

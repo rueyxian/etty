@@ -10,12 +10,11 @@
 //! [mod-stdout]: std::io::stdout
 
 mod util;
-#[doc(hidden)]
 pub(crate) use crate::util::*;
 
 mod unix;
 
-mod term;
+pub mod term;
 #[doc(hidden)]
 pub use term::*;
 // pub use term::raw_mode;

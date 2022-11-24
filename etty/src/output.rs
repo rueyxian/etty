@@ -4,11 +4,11 @@
 //! ```
 //! use etty::StdoutWrite;
 //! fn main() {
-//!     etty::ers_all().outw();
-//!     etty::cusr_goto(15, 10).outw();
-//!     etty::sgr!(etty::STY_BOLD_SET, etty::FG_YEL).outw();
-//!     "hello world".outw();
-//!     etty::sgr_rst().outw();
+//!     etty::ers_all().out();
+//!     etty::cusr_goto(15, 10).out();
+//!     etty::sgr!(etty::STY_BOLD_SET, etty::FG_YEL).out();
+//!     "hello world".out();
+//!     etty::sgr_rst().out();
 //!     etty::flush();
 //! }
 //! ```
@@ -20,12 +20,22 @@
 use std::io::Write;
 
 pub trait StdoutWrite: std::fmt::Display {
-    fn outw(&self) {
+    fn out(&self) {
         std::write!(std::io::stdout(), "{}", self).unwrap();
     }
 
-    fn outwln(&self) {
+    fn outln(&self) {
         std::write!(std::io::stdout(), "{}\n", self).unwrap();
+    }
+
+    fn print(&self) {
+        self.out();
+        flush();
+    }
+
+    fn println(&self) {
+        self.outln();
+        flush();
     }
 }
 
