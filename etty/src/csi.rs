@@ -1,3 +1,24 @@
+//! Functions for building [Control Sequence Introducer][wiki] (CSI).
+//!  
+//! ```rust
+//! fn main() {
+//!     assert_eq!(etty::ers_all(), "\x1b[2J");
+//!     assert_eq!(etty::ers_char(3), "\x1b[3J");
+//!     assert_eq!(etty::cusr_goto(5, 15), "\x1b[15;5H");
+//!     assert_eq!(etty::sty_blink_rst(), "\x1b[25m");
+//!     assert_eq!(etty::fg_rgb(42, 99, 123), "\x1b[38;2;42;99;123m");
+//!     assert_eq!(etty::evt_mouse_set(), "\x1b[?1000h");
+//! }
+//! ```
+//!
+//! To learn more about ANSI CSI:
+//! * [wikipedia](https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences)
+//! * [gist/github.com/fnky](https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797)
+//! * [invisible-island.net](https://invisible-island.net/xterm/manpage/xterm.html)
+//! * [vt100.net](https://vt100.net/docs/vt510-rm/chapter4.html)
+//!
+//! [wiki]: https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences
+
 use std::io::Read;
 // use std::io::Write;
 
@@ -87,53 +108,6 @@ etty_macros::gen_csi! {
     pub scrn_load => "?47l";
     pub alt_buf_set => "?1049h";
     pub alt_buf_rst => "?1049l";
-}
-
-pub const SGR_RST: u8 = 0;
-
-etty_macros::gen_sty_const! {
-    1
-    BOLD,
-    DIM,
-    ITALIC,
-    UNDERLN,
-    BLINK,
-}
-
-etty_macros::gen_sty_const! {
-    7
-    INVRS,
-    HIDE,
-    STRKTHRU,
-}
-
-etty_macros::gen_clr_const! {
-    30 =>
-    BLK,
-    RED,
-    GRN,
-    YEL,
-    BLU,
-    MAG,
-    CYN,
-    WHT,
-}
-
-etty_macros::gen_clr_const! {
-    39 =>
-    RST,
-}
-
-etty_macros::gen_clr_const! {
-    90 =>
-    BRGT_BLK,
-    BRGT_RED,
-    BRGT_GRN,
-    BRGT_YEL,
-    BRGT_BLU,
-    BRGT_MAG,
-    BRGT_CYN,
-    BRGT_WHT,
 }
 
 etty_macros::gen_csi! {

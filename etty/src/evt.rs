@@ -1,3 +1,10 @@
+//! Event handler.
+//!
+//! TODO
+//!
+//! [wiki-c0]: https://en.wikipedia.org/wiki/C0_and_C1_control_codes
+//! [mod-evt]: etty_macros::evt
+
 use std::io::Read;
 
 #[derive(Debug)]
@@ -138,7 +145,6 @@ where
     EventAndRawStream { rx }
 }
 
-// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Mouse-Tracking
 pub struct EventAndRawStream {
     rx: crossbeam::channel::Receiver<std::io::Result<EventAndRaw>>,
 }

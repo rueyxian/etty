@@ -1,3 +1,10 @@
+//! Enum for [C0 control codes][wiki-c0].
+//!
+//! `C0` is produced by [`etty::evt::event_stream`][mod-evt]
+//!
+//! [wiki-c0]: https://en.wikipedia.org/wiki/C0_and_C1_control_codes
+//! [mod-evt]: crate::evt::event_stream
+
 // https://en.wikipedia.org/wiki/C0_and_C1_control_codes
 #[derive(Debug, Eq, PartialEq, Clone, Copy, num_derive::FromPrimitive)]
 pub enum C0 {
