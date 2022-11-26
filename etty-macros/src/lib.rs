@@ -16,9 +16,9 @@ struct GenCsi {
 
 impl syn::parse::Parse for GenCsi {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mod_visi = input.parse::<syn::Visibility>()?;
+        let mod_visi = input.parse::<syn::Visibility>()?; // TODO: maybe remove
         let _mod = input.parse::<Token![mod]>()?;
-        let mod_nm = input.parse::<proc_macro2::Ident>()?;
+        let mod_nm = input.parse::<proc_macro2::Ident>()?; // TODO: maybe remove
         let _semi = input.parse::<Token![;]>()?;
 
         let csis = syn::punctuated::Punctuated::<Csi, Token![;]>::parse_terminated(input)?;
@@ -44,7 +44,7 @@ impl syn::parse::Parse for GenCsi {
         let tts = quote! {
             // #csi_import
             // #mod_visi mod #mod_nm {
-                #csi_tts
+            #csi_tts
             // }
         };
         Ok(GenCsi { tts })
@@ -69,7 +69,7 @@ impl syn::parse::Parse for Csi {
             (pascal, ident)
         };
         let _fat_arrow = input.parse::<Token![=>]>()?;
-        let CsiFmtTmp { doc, fmt, nms_ord } = input.parse::<CsiFmtTmp>()?;
+        let CsiFmtParse { doc, fmt, nms_ord } = input.parse::<CsiFmtParse>()?;
 
         let args = {
             #[derive(Clone)]
@@ -80,7 +80,7 @@ impl syn::parse::Parse for Csi {
             let mut args = Vec::<Arg>::with_capacity(nms_ord.len());
             for _ in 0..nms_ord.len() {
                 let _comma = input.parse::<Token![,]>()?;
-                let CsiArgTmp { nm, ty } = input.parse::<CsiArgTmp>()?;
+                let CsiArgParse { nm, ty } = input.parse::<CsiArgParse>()?;
                 args.push(Arg { nm, ty });
             }
             if nms_ord.len() != args.len() {
@@ -130,7 +130,23 @@ impl syn::parse::Parse for Csi {
         //             }
         //         }
         //     };
+        //     let impl_methods_tts = {
+        //         quote! {
+        //             impl #nm_pascal {
+        //                 pub fn out(&self) {
+        //                     std::write!(std::io::stdout(), "{}", self).unwrap();
+        //                 }
+        //                 pub fn outln(&self) {
+        //                     std::writeln!(std::io::stdout(), "{}", self).unwrap();
+        //                 }
 
+        //                 pub fn outf(&self) {
+        //                     std::write!(std::io::stdout(), "{}", self).unwrap();
+        //                     std::io::stdout().flush().unwrap();
+        //                 }
+        //             }
+        //         }
+        //     };
         //     let factory = {
         //         let arg_exprs = args.iter().map(|arg| {
         //             let nm = &arg.nm;
@@ -142,6 +158,7 @@ impl syn::parse::Parse for Csi {
         //             false => quote! { #nm_pascal(#(#arg_nms,)*) },
         //         };
         //         quote! {
+        //             #[doc = #doc]
         //             #visi fn #nm_snake (#(#arg_exprs,)*) -> #nm_pascal {
         //                 #ret
         //             }
@@ -169,6 +186,12 @@ impl syn::parse::Parse for Csi {
         //     }
         // };
 
+        // Ok(Csi {
+        //     visi,
+        //     nm_snake,
+        //     tts,
+        // })
+
         let tts = {
             let doc = format!("ESC [ {}", doc);
             let arg_exprs = args.iter().map(|arg| {
@@ -176,10 +199,17 @@ impl syn::parse::Parse for Csi {
                 let ty = &arg.ty;
                 quote! { #nm: #ty }
             });
+            let ret = {
+                if args.is_empty() {
+                    quote! { Csi::Sta(#fmt) }
+                } else {
+                    quote! { Csi::Dyn(std::format!(#fmt, #(#arg_nms,)*)) }
+                }
+            };
             quote! {
                 #[doc = #doc]
                 #visi fn #nm_snake (#(#arg_exprs,)*) ->  Csi {
-                    Csi::new(std::format!(#fmt, #(#arg_nms,)*))
+                    #ret
                 }
             }
         };
@@ -192,35 +222,35 @@ impl syn::parse::Parse for Csi {
     }
 }
 
-struct CsiArgTmp {
+struct CsiArgParse {
     nm: proc_macro2::Ident,
     ty: proc_macro2::Ident,
 }
 
-impl syn::parse::Parse for CsiArgTmp {
+impl syn::parse::Parse for CsiArgParse {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         static INT_TYS: [&str; 6] = ["u8", "u16", "u32", "u64", "u128", "usize"];
         let nm = input.parse::<proc_macro2::Ident>()?;
         let Ok(_colon) = input.parse::<Token![:]>() else {
             let ty = proc_macro2::Ident::new("u16", proc_macro2::Span::call_site());
-            return Ok(CsiArgTmp { nm, ty })
+            return Ok(CsiArgParse { nm, ty })
         };
         let ty = input.parse::<proc_macro2::Ident>()?;
         if !INT_TYS.contains(&ty.to_string().as_str()) {
             let msg = format!("expect {:?}", INT_TYS);
             return Err(syn::Error::new_spanned(ty, msg));
         }
-        Ok(CsiArgTmp { nm, ty })
+        Ok(CsiArgParse { nm, ty })
     }
 }
 
-struct CsiFmtTmp {
+struct CsiFmtParse {
     doc: String,
     fmt: proc_macro2::Literal,
     nms_ord: Vec<String>,
 }
 
-impl syn::parse::Parse for CsiFmtTmp {
+impl syn::parse::Parse for CsiFmtParse {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let litstr = input.parse::<syn::LitStr>()?;
         let s = litstr.value();
@@ -234,6 +264,7 @@ impl syn::parse::Parse for CsiFmtTmp {
             v
         };
         let mut nmbuf = Vec::<u8>::new();
+
         while let Some(byte) = bytes.next() {
             match byte {
                 b @ b'{' => {
@@ -242,11 +273,16 @@ impl syn::parse::Parse for CsiFmtTmp {
                     fmtbuf.push(b);
                     'cb: loop {
                         match bytes.next() {
-                            None | Some(b'{') => {
+                            None => {
                                 return Err(syn::Error::new_spanned(
                                     litstr,
                                     "expect a closing brace `}`",
                                 ));
+                            }
+                            Some(b @ b'{') => {
+                                // escape '{'
+                                fmtbuf.push(b);
+                                break 'cb;
                             }
                             Some(b @ b'}') => {
                                 docbuf.push(b);
@@ -272,8 +308,17 @@ impl syn::parse::Parse for CsiFmtTmp {
                     }
                 }
                 b @ b'}' => {
+                    let Some(b'}') = bytes.next() else{
+                        return Err(syn::Error::new_spanned(
+                            litstr,
+                            "expect a `{` before a `}`",
+                        ));
+                    };
+                    // escape '}'
+                    docbuf.push(b' ');
+                    docbuf.push(b);
                     fmtbuf.push(b);
-                    return Err(syn::Error::new_spanned(litstr, "expect a `{` before a `}`"));
+                    fmtbuf.push(b);
                 }
                 b => {
                     match (
@@ -283,20 +328,7 @@ impl syn::parse::Parse for CsiFmtTmp {
                         (_, false) | (false, true) => docbuf.push(b' '),
                         (_, _) => {}
                     }
-                    // if !b.is_ascii_digit() || docbuf.last() {
-                    //     docbuf.push(b' ');
-                    // }
                     docbuf.push(b);
-
-                    // if let b'0'..=b'9' = b {
-                    //     if let Some(&p) = bytes.peek() {
-                    //         if p > b'9' || p < b'0' {
-                    //             docbuf.push(b' ');
-                    //         }
-                    //     }
-                    // } else {
-                    //     docbuf.push(b' ');
-                    // }
                     fmtbuf.push(b);
                     continue;
                 }
@@ -307,9 +339,93 @@ impl syn::parse::Parse for CsiFmtTmp {
             let s = String::from_utf8(fmtbuf).unwrap();
             proc_macro2::Literal::string(&s)
         };
-        Ok(CsiFmtTmp { doc, fmt, nms_ord })
+        Ok(CsiFmtParse { doc, fmt, nms_ord })
     }
 }
+
+// impl syn::parse::Parse for CsiFmtParse {
+//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+//         let litstr = input.parse::<syn::LitStr>()?;
+//         let s = litstr.value();
+//         let mut bytes = s.bytes().peekable();
+//         let mut nms_ord = Vec::<String>::new();
+//         let mut docbuf = Vec::<u8>::with_capacity(s.len() * 2);
+//         let mut fmtbuf = {
+//             let mut v = Vec::<u8>::with_capacity(s.len() + 2);
+//             v.push(b'\x1b');
+//             v.push(b'[');
+//             v
+//         };
+//         let mut nmbuf = Vec::<u8>::new();
+//         while let Some(byte) = bytes.next() {
+//             match byte {
+//                 b @ b'{' => {
+//                     docbuf.push(b' ');
+//                     docbuf.push(b);
+//                     fmtbuf.push(b);
+//                     'cb: loop {
+//                         match bytes.next() {
+//                             None | Some(b'{') => {
+//                                 return Err(syn::Error::new_spanned(
+//                                     litstr,
+//                                     "expect a closing brace `}`",
+//                                 ));
+//                             }
+//                             Some(b @ b'}') => {
+//                                 docbuf.push(b);
+//                                 fmtbuf.push(b);
+//                                 let nm = if nmbuf.is_empty() {
+//                                     return Err(syn::Error::new_spanned(
+//                                         litstr,
+//                                         "expect arg name inside the `{}`",
+//                                     ));
+//                                 } else {
+//                                     let bytes = nmbuf.drain(..).collect::<Vec<u8>>();
+//                                     String::from_utf8(bytes).unwrap()
+//                                 };
+//                                 nms_ord.push(nm);
+//                                 break 'cb;
+//                             }
+//                             Some(b) => {
+//                                 docbuf.push(b);
+//                                 nmbuf.push(b);
+//                                 continue;
+//                             }
+//                         }
+//                     }
+//                 }
+//                 b @ b'}' => {
+//                     let Some(b'}') = bytes.next() else{
+//                         return Err(syn::Error::new_spanned(
+//                             litstr,
+//                             "expect a `{` before a `}`",
+//                         ));
+//                     };
+//                     docbuf.push(b);
+//                     fmtbuf.push(b);
+//                 }
+//                 b => {
+//                     match (
+//                         docbuf.last().map(|d| d.is_ascii_digit()).unwrap_or(false),
+//                         b.is_ascii_digit(),
+//                     ) {
+//                         (_, false) | (false, true) => docbuf.push(b' '),
+//                         (_, _) => {}
+//                     }
+//                     docbuf.push(b);
+//                     fmtbuf.push(b);
+//                     continue;
+//                 }
+//             };
+//         }
+//         let doc = String::from_utf8(docbuf).unwrap();
+//         let fmt = {
+//             let s = String::from_utf8(fmtbuf).unwrap();
+//             proc_macro2::Literal::string(&s)
+//         };
+//         Ok(CsiFmtParse { doc, fmt, nms_ord })
+//     }
+// }
 
 fn snake_to_pascal(s: &str) -> Option<String> {
     let mut buf = Vec::<u8>::with_capacity(s.len());
@@ -484,46 +600,107 @@ impl syn::parse::Parse for Sgr {
             }
             (buf.concat(), exprs.into_iter())
         };
-        // let tts = quote! {{
-        //     use std::io::Write;
-        //     struct __Sgr;
-        //     // impl __Sgr {
-        //     //     pub fn stdout(&self) {
-        //     //         std::write!(std::io::stdout(), "{}", self).unwrap();
-        //     //     }
-        //     // }
-        //     impl std::fmt::Display for __Sgr {
-        //         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        //             write!(f, #fmt, #(#exprs as u8,)*)
-        //         }
-        //     }
-        //     __Sgr
-        // }};
-        let tts = quote! {{ etty::csi::Csi::new(std::format!(#fmt, #(#exprs as u8,)*)) }};
+        let tts = quote! { etty::csi::Csi::Dyn(std::format!(#fmt, #(#exprs as u8,)*)) };
         Ok(Sgr { tts })
     }
 }
 
 // =============================================================
 
+// /// A convenience macro for [`stdout`](std::io::stdout).
+// #[proc_macro]
+// pub fn out(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+//     parse_macro_input!(input as Out).tts.into()
+// }
+
+// struct Out {
+//     tts: proc_macro2::TokenStream,
+// }
+
+// impl syn::parse::Parse for Out {
+//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+//         let exprs = syn::punctuated::Punctuated::<syn::Expr, Token![,]>::parse_terminated(input)?
+//             .into_iter();
+//         let tts = quote! {{
+//             use std::io::Write;
+//             std::write!(std::io::stdout(), #(#exprs,)*).unwrap();
+//         }};
+//         Ok(Out { tts })
+//     }
+// }
+
 /// A convenience macro for [`stdout`](std::io::stdout).
 #[proc_macro]
 pub fn out(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    parse_macro_input!(input as WriteFmt).tts.into()
+    struct Out(proc_macro2::TokenStream);
+    impl syn::parse::Parse for Out {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let fmtargs = input.parse::<FmtArgsExprs>()?.0;
+            let tts = quote! {{
+                use std::io::Write;
+                std::write!(std::io::stdout(), #fmtargs).unwrap();
+            }};
+            Ok(Out(tts))
+        }
+    }
+    parse_macro_input!(input as Out).0.into()
 }
 
-struct WriteFmt {
-    tts: proc_macro2::TokenStream,
+/// A convenience macro for [`stdout`](std::io::stdout).
+#[proc_macro]
+pub fn outln(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    struct Outln(proc_macro2::TokenStream);
+    impl syn::parse::Parse for Outln {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let fmtargs = input.parse::<FmtArgsExprs>()?.0;
+            let tts = quote! {{
+                use std::io::Write;
+                std::writeln!(std::io::stdout(), #fmtargs).unwrap();
+            }};
+            Ok(Outln(tts))
+        }
+    }
+    parse_macro_input!(input as Outln).0.into()
 }
 
-impl syn::parse::Parse for WriteFmt {
+/// A convenience macro for [`stdout`](std::io::stdout).
+#[proc_macro]
+pub fn outf(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    struct Outf(proc_macro2::TokenStream);
+    impl syn::parse::Parse for Outf {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let fmtargs = input.parse::<FmtArgsExprs>()?.0;
+            let tts = quote! {{
+                use std::io::Write;
+                std::write!(std::io::stdout(), #fmtargs).unwrap();
+                std::io::stdout().flush();
+            }};
+            Ok(Outf(tts))
+        }
+    }
+    parse_macro_input!(input as Outf).0.into()
+}
+
+struct FmtArgsExprs(proc_macro2::TokenStream);
+
+impl syn::parse::Parse for FmtArgsExprs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let exprs = syn::punctuated::Punctuated::<syn::Expr, Token![,]>::parse_terminated(input)?
-            .into_iter();
-        let tts = quote! {{
-            use std::io::Write;
-            std::write!(std::io::stdout(), #(#exprs,)*).unwrap();
-        }};
-        Ok(WriteFmt { tts })
+        let lead = input.parse::<syn::Expr>()?;
+        let tts = if let syn::Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Str(litstr),
+            ..
+        }) = lead
+        {
+            if !input.is_empty() {
+                let _comma = input.parse::<Token![,]>()?;
+            }
+            let exprs =
+                syn::punctuated::Punctuated::<syn::Expr, Token![,]>::parse_terminated(input)?
+                    .into_iter();
+            quote! { #litstr, #(#exprs,)* }
+        } else {
+            quote! { "{}", #lead }
+        };
+        Ok(FmtArgsExprs(tts))
     }
 }

@@ -24,36 +24,35 @@ use std::io::Write;
 
 use crate::input;
 
-pub struct Csi(String);
+pub enum Csi {
+    Sta(&'static str),
+    Dyn(String),
+}
 
 impl std::fmt::Display for Csi {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        match self {
+            Csi::Sta(s) => write!(f, "{}", s),
+            Csi::Dyn(s) => write!(f, "{}", s),
+        }
     }
 }
 
 impl Csi {
-    pub fn new(s: String) -> Self {
-        Self(s)
-    }
     pub fn out(&self) {
         std::write!(std::io::stdout(), "{}", self).unwrap();
     }
     pub fn outln(&self) {
-        std::write!(std::io::stdout(), "{}\n", self).unwrap();
+        std::writeln!(std::io::stdout(), "{}", self).unwrap();
     }
-    pub fn print(&self) {
-        self.out();
-        std::io::stdout().flush().unwrap();
-    }
-    pub fn println(&self) {
-        self.outln();
+    pub fn outf(&self) {
+        std::write!(std::io::stdout(), "{}", self).unwrap();
         std::io::stdout().flush().unwrap();
     }
 }
 
 pub fn read_cus_pos() -> (u16, u16) {
-    use crate::StdoutWrite;
+    // use crate::StdoutWrite;
     let (mut stdin, jh) = {
         let (stdin, jh) = input::async_stdin()
             .timeout(std::time::Duration::from_millis(100))
@@ -114,7 +113,7 @@ etty_macros::gen_csi! {
 
 }
 
-// clear
+// erase
 etty_macros::gen_csi! {
     mod ers;
     pub ers_aft_cus => "0J";
@@ -131,15 +130,17 @@ etty_macros::gen_csi! {
 etty_macros::gen_csi! {
     mod del;
     pub del_char => "{n}P", n;
+    pub del_col => "{n}'~", n; // TODO idk why it kenot werks
     pub del_ln => "{n}M", n;
-    // pub ers_aft_cusr => "0J";
-    // pub ers_bfr_cusr => "1J";
-    // pub ers_all => "2J";
-    // pub ers_all_and_saved => "3J";
-    // pub ers_ln_aft_cusr => "0K";
-    // pub ers_ln_bfr_cusr => "1K";
-    // pub ers_ln => "2K";
-    // pub ers_char => "{n}X", n;
+}
+
+// insert
+etty_macros::gen_csi! {
+    mod ins;
+    pub ins_char => "{n}@", n;
+    pub ins_col => "{n}'}}", n; // double '}' for escaping
+    // pub ins_test => "{n}'{{{{ z", n;
+    pub ins_ln => "{n}L", n;
 }
 
 // scroll
