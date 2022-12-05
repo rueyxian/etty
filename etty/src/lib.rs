@@ -1,4 +1,4 @@
-//! A simple and easy tty library for Rust.
+//! A simple and easy tty library.
 //!
 //! This library aim to be easy to use without being overly abstracted. Key components:
 //! * ANSI [CSI][wiki-csi] builder.

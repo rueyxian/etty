@@ -3,15 +3,8 @@
 //! These `u8` constants represent [SGR parameters][wiki-sgr]. It is expected to be used in conjunction with [etty_macros::sgr][mod-sgr] macro.
 //!
 //! ```rust
-//! fn main() {
-//!     // consider this
-//!     let sgr1 = etty::sgr!(etty::STY_BOLD_SET, etty::FG_RED, etty::BG_BRGT_YEL);
-//!     assert_eq!(sgr1, "\x1b[1;31;103m");
-//!
-//!     // than this
-//!     let sgr2 = format!("{}{}{}", etty::sty_bold_set(), etty::fg_red(), etty::bg_brgt_yel());
-//!     assert_eq!(sgr2, "\x1b[1m\x1b[31m\x1b[103m");
-//! }
+//! let sgr = etty::sgr!(etty::STY_BOLD_SET, etty::FG_RED, etty::BG_BRGT_YEL);
+//! assert_eq!(sgr.to_string(), "\x1b[1;31;103m");
 //! ```
 //!
 //! [wiki-sgr]: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters

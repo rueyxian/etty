@@ -4,6 +4,7 @@ description = "macros for etty"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
+keywords = ["tty", "tui", "macro" ]
 readme = "README.md"
 authors = ["rueyxian <yrueyxian@gmail.com>"]
 

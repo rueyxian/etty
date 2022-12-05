@@ -6,4 +6,9 @@
 //! [mod-etty-macro]: etty_macros
 
 pub use etty_macros::out;
+
+pub use etty_macros::outf;
+
+pub use etty_macros::outln;
+
 pub use etty_macros::sgr;

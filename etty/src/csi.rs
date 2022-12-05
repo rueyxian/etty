@@ -2,12 +2,12 @@
 //!  
 //! ```rust
 //! fn main() {
-//!     assert_eq!(etty::ers_all(), "\x1b[2J");
-//!     assert_eq!(etty::ers_char(3), "\x1b[3J");
-//!     assert_eq!(etty::cusr_goto(5, 15), "\x1b[15;5H");
-//!     assert_eq!(etty::sty_blink_rst(), "\x1b[25m");
-//!     assert_eq!(etty::fg_rgb(42, 99, 123), "\x1b[38;2;42;99;123m");
-//!     assert_eq!(etty::evt_mouse_set(), "\x1b[?1000h");
+//!     assert_eq!(etty::ers_all().to_string(), "\x1b[2J");
+//!     assert_eq!(etty::ers_char(3).to_string(), "\x1b[3J");
+//!     assert_eq!(etty::cus_goto(5, 15).to_string(), "\x1b[15;5H");
+//!     assert_eq!(etty::sty_blink_rst().to_string(), "\x1b[25m");
+//!     assert_eq!(etty::fg_rgb(42, 99, 123).to_string(), "\x1b[38;2;42;99;123m");
+//!     assert_eq!(etty::evt_mouse_set().to_string(), "\x1b[?1000h");
 //! }
 //! ```
 //!
@@ -25,15 +25,15 @@ use std::io::Write;
 use crate::input;
 
 pub enum Csi {
-    Sta(&'static str),
-    Dyn(String),
+    Static(&'static str),
+    Heap(String),
 }
 
 impl std::fmt::Display for Csi {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Csi::Sta(s) => write!(f, "{}", s),
-            Csi::Dyn(s) => write!(f, "{}", s),
+            Csi::Static(s) => write!(f, "{}", s),
+            Csi::Heap(s) => write!(f, "{}", s),
         }
     }
 }
@@ -46,13 +46,12 @@ impl Csi {
         std::writeln!(std::io::stdout(), "{}", self).unwrap();
     }
     pub fn outf(&self) {
-        std::write!(std::io::stdout(), "{}", self).unwrap();
+        self.out();
         std::io::stdout().flush().unwrap();
     }
 }
 
 pub fn read_cus_pos() -> (u16, u16) {
-    // use crate::StdoutWrite;
     let (mut stdin, jh) = {
         let (stdin, jh) = input::async_stdin()
             .timeout(std::time::Duration::from_millis(100))
@@ -62,9 +61,8 @@ pub fn read_cus_pos() -> (u16, u16) {
     };
     let mut next = || stdin.next().unwrap().unwrap();
 
-    cus_report_pos().out();
-    // std::io::stdout().flush().unwrap();
-    crate::flush();
+    cus_pos_rpt().out();
+    std::io::stdout().flush().unwrap();
 
     while next() != b'\x1b' {}
     assert_eq!(next(), b'[');
@@ -91,7 +89,7 @@ pub fn read_cus_pos() -> (u16, u16) {
 // cursor
 etty_macros::gen_csi! {
     pub mod cus;
-    pub(crate) cus_report_pos => "6n";
+    pub cus_pos_rpt => "6n";
 
     pub cus_up => "{n}A", n;
     pub cus_dn => "{n}B", n;
@@ -101,6 +99,7 @@ etty_macros::gen_csi! {
     pub cus_next_ln => "{n}E", n;
     pub cus_prev_ln => "{n}F", n;
     pub cus_goto_x => "{x}G", x;
+    pub cus_goto_y => "{y}d", y;
 
     pub cus_home => "H";
     pub cus_goto => "{y};{x}H", x, y;
@@ -110,8 +109,20 @@ etty_macros::gen_csi! {
 
     pub cus_show => "?25h";
     pub cus_hide => "?25l";
-
 }
+
+// // c0
+// etty_macros::gen_csi! {
+//     mod c0;
+//     pub c0_show => "3h";
+//     pub c0_intp => "3L";
+// }
+
+// // term
+// etty_macros::gen_csi! {
+//     mod term;
+//     pub term_soft_rst => "!p";
+// }
 
 // erase
 etty_macros::gen_csi! {
@@ -126,6 +137,21 @@ etty_macros::gen_csi! {
     pub ers_char => "{n}X", n;
 }
 
+// // selective erse
+// etty_macros::gen_csi! {
+//     mod sel_ers;
+//     pub sel_ers_set => "0\"q";
+//     pub sel_ers_rst => "1\"q";
+
+//     pub sel_ers_aft_cus => "?0J";
+//     pub sel_ers_bfr_cus => "?1J";
+//     pub sel_ers_all => "?2J";
+//     pub sel_ers_all_and_saved => "?3J";
+//     pub sel_ers_ln_aft_cus => "?0K";
+//     pub sel_ers_ln_bfr_cus => "?1K";
+//     pub sel_ers_ln => "?2K";
+// }
+
 // delete
 etty_macros::gen_csi! {
     mod del;
@@ -139,8 +165,10 @@ etty_macros::gen_csi! {
     mod ins;
     pub ins_char => "{n}@", n;
     pub ins_col => "{n}'}}", n; // double '}' for escaping
-    // pub ins_test => "{n}'{{{{ z", n;
     pub ins_ln => "{n}L", n;
+
+    pub ins_rpl_set => "4h";
+    pub ins_rpl_rst => "4l";
 }
 
 // scroll

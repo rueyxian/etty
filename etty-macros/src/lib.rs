@@ -193,7 +193,7 @@ impl syn::parse::Parse for Csi {
         // })
 
         let tts = {
-            let doc = format!("ESC [ {}", doc);
+            let doc = format!("`\\x1b[{}`", doc);
             let arg_exprs = args.iter().map(|arg| {
                 let nm = &arg.nm;
                 let ty = &arg.ty;
@@ -201,9 +201,9 @@ impl syn::parse::Parse for Csi {
             });
             let ret = {
                 if args.is_empty() {
-                    quote! { Csi::Sta(#fmt) }
+                    quote! { Csi::Static(#fmt) }
                 } else {
-                    quote! { Csi::Dyn(std::format!(#fmt, #(#arg_nms,)*)) }
+                    quote! { Csi::Heap(std::format!(#fmt, #(#arg_nms,)*)) }
                 }
             };
             quote! {
@@ -268,7 +268,7 @@ impl syn::parse::Parse for CsiFmtParse {
         while let Some(byte) = bytes.next() {
             match byte {
                 b @ b'{' => {
-                    docbuf.push(b' ');
+                    // docbuf.push(b' ');
                     docbuf.push(b);
                     fmtbuf.push(b);
                     'cb: loop {
@@ -315,19 +315,19 @@ impl syn::parse::Parse for CsiFmtParse {
                         ));
                     };
                     // escape '}'
-                    docbuf.push(b' ');
+                    // docbuf.push(b' ');
                     docbuf.push(b);
                     fmtbuf.push(b);
                     fmtbuf.push(b);
                 }
                 b => {
-                    match (
-                        docbuf.last().map(|d| d.is_ascii_digit()).unwrap_or(false),
-                        b.is_ascii_digit(),
-                    ) {
-                        (_, false) | (false, true) => docbuf.push(b' '),
-                        (_, _) => {}
-                    }
+                    // match (
+                    //     docbuf.last().map(|d| d.is_ascii_digit()).unwrap_or(false),
+                    //     b.is_ascii_digit(),
+                    // ) {
+                    //     (_, false) | (false, true) => docbuf.push(b' '),
+                    //     (_, _) => {}
+                    // }
                     docbuf.push(b);
                     fmtbuf.push(b);
                     continue;
@@ -600,7 +600,7 @@ impl syn::parse::Parse for Sgr {
             }
             (buf.concat(), exprs.into_iter())
         };
-        let tts = quote! { etty::csi::Csi::Dyn(std::format!(#fmt, #(#exprs as u8,)*)) };
+        let tts = quote! { etty::csi::Csi::Heap(std::format!(#fmt, #(#exprs as u8,)*)) };
         Ok(Sgr { tts })
     }
 }
@@ -673,7 +673,7 @@ pub fn outf(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             let tts = quote! {{
                 use std::io::Write;
                 std::write!(std::io::stdout(), #fmtargs).unwrap();
-                std::io::stdout().flush();
+                std::io::stdout().flush().unwrap();
             }};
             Ok(Outf(tts))
         }
