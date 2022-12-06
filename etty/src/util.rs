@@ -15,7 +15,7 @@ where
     // let ten = num::cast::<_, T>(10_u16).unwrap();
     for i in (0..bytes.len()).rev() {
         let b = bytes[i];
-        if b > b'9' || b < b'0' {
+        if !(b'0'..=b'9').contains(&b) {
             return None;
         }
         acc += T::from_u8(b - OFF_SET).unwrap() * xten;

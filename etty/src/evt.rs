@@ -465,15 +465,7 @@ where
     raw.push(b_m);
 
     let mut vals = bytes.rsplit(|b| *b == b';').map(|bytes| {
-        let num = crate::bytes_to_uint::<u16>(&bytes).unwrap();
-        // let mut xten: u16 = 1;
-        // let num = (0..bytes.len()).rev().fold(0_u16, |mut acc, i| {
-        //     let byte = bytes[i];
-        //     raw.push(byte);
-        //     acc += (byte - OFF_SET) as u16 * xten;
-        //     xten *= 10;
-        //     acc
-        // });
+        let num = crate::bytes_to_uint::<u16>(bytes).unwrap();
         raw.push(b';');
         num
     });

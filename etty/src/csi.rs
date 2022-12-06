@@ -17,32 +17,37 @@
 //!
 //! [wiki]: https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences
 
+#![allow(clippy::explicit_write)]
+
+use std::borrow::Cow;
 use std::io::Read;
 use std::io::Write;
 
 use crate::input;
 
-pub enum Csi {
-    Static(&'static str),
-    Heap(String),
-}
+/// Representation CSI sequence.
+///
+/// `Csi` provides convenience methods for writing into [`std::io::Stdout`](std::io::Stdout).
+/// It just a string wrapper, [`std::borrow::Cow<str>`](std::borrow::Cow) specifically.
+/// Created by functions in [`etty::csi`](etty::csi) module.
+pub struct Csi<'a>(Cow<'a, str>);
 
-impl std::fmt::Display for Csi {
+impl<'a> std::fmt::Display for Csi<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Csi::Static(s) => write!(f, "{}", s),
-            Csi::Heap(s) => write!(f, "{}", s),
-        }
+        write!(f, "{}", self.0)
     }
 }
 
-impl Csi {
+impl<'a> Csi<'a> {
+    /// Writes into [`std::io::Stdout`](std::io::Stdout).
     pub fn out(&self) {
         std::write!(std::io::stdout(), "{}", self).unwrap();
     }
+    /// Same with `Csi::out` but with newline.
     pub fn outln(&self) {
         std::writeln!(std::io::stdout(), "{}", self).unwrap();
     }
+    /// Same with `Csi::out` but perform [`std::io::Stdout::flush`](std::io::Stdout::flush) immediately.
     pub fn outf(&self) {
         self.out();
         std::io::stdout().flush().unwrap();
@@ -86,7 +91,7 @@ pub fn read_cus_pos() -> (u16, u16) {
 
 // cursor
 etty_macros::gen_csi! {
-    pub mod cus;
+    // pub mod cus;
     pub cus_pos_rpt => "6n";
 
     pub cus_up => "{n}A", n;
@@ -124,7 +129,7 @@ etty_macros::gen_csi! {
 
 // erase
 etty_macros::gen_csi! {
-    mod ers;
+    // mod ers;
     pub ers_aft_cus => "0J";
     pub ers_bfr_cus => "1J";
     pub ers_all => "2J";
@@ -152,7 +157,7 @@ etty_macros::gen_csi! {
 
 // delete
 etty_macros::gen_csi! {
-    mod del;
+    // mod del;
     pub del_char => "{n}P", n;
     pub del_col => "{n}'~", n; // TODO idk why it kenot werks
     pub del_ln => "{n}M", n;
@@ -160,7 +165,7 @@ etty_macros::gen_csi! {
 
 // insert
 etty_macros::gen_csi! {
-    mod ins;
+    // mod ins;
     pub ins_char => "{n}@", n;
     pub ins_col => "{n}'}}", n; // double '}' for escaping
     pub ins_ln => "{n}L", n;
@@ -171,14 +176,14 @@ etty_macros::gen_csi! {
 
 // scroll
 etty_macros::gen_csi! {
-    mod scrl;
+    // mod scrl;
     pub scrl_up => "{n}S", n;
     pub scrl_dn => "{n}T", n;
 }
 
 // private modes
 etty_macros::gen_csi! {
-    mod private;
+    // mod private;
     pub scrn_save => "?47h";
     pub scrn_load => "?47l";
     pub alt_buf_set => "?1049h";
@@ -186,7 +191,7 @@ etty_macros::gen_csi! {
 }
 
 etty_macros::gen_csi! {
-    mod sgr;
+    // mod sgr;
     pub sgr_rst => "0m";
 
     pub sty_bold_set => "1m";
@@ -261,7 +266,7 @@ etty_macros::gen_csi! {
 }
 
 etty_macros::gen_csi! {
-    mod scrn;
+    // mod scrn;
     pub scrn_mono_40x25_set => "=0h";
     pub scrn_mono_40x25_rst => "=0l";
 
@@ -309,7 +314,7 @@ etty_macros::gen_csi! {
 }
 
 etty_macros::gen_csi! {
-    mod evt;
+    // mod evt;
     pub evt_mouse_set => "?1000h";
     pub evt_mouse_ext_set => "?1006h";
     pub evt_mouse_drag_set => "?1002h";
