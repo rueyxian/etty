@@ -1,5 +1,3 @@
-// #![doc(hidden)]
-
 use quote::quote;
 use syn::parse_macro_input;
 use syn::Token;
@@ -568,6 +566,22 @@ impl syn::parse::Parse for GenStyConst {
 ///
 /// It is expected to be used in conjunction with [`etty::sgr_const`][mod-sgr-const].
 ///
+/// ```rust
+/// etty::sgr!(etty::STY_BOLD_SET, etty::FG_BLU, etty::BG_RED).out();
+/// etty::out!("I'm bold and blue, my background is red");
+/// etty::sgr_rst().out();
+/// ```
+///
+/// Use this macro for shorter consecutive SGR code.
+///
+/// ``` rust
+/// let sgr = etty::sgr!(etty::STY_BOLD_SET, etty::FG_BLU, etty::BG_RED).to_string();
+/// assert_eq!(sgr, "\x1b[1;34;41m");
+///
+/// let sgr = format!("{}{}{}", etty::sty_bold_set(), etty::fg_blu(), etty::bg_red());
+/// assert_eq!(sgr, "\x1b[1m\x1b[34m\x1b[41m");
+/// ````
+///
 /// [wiki-sgr]: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
 /// [mod-sgr-const]: etty::sgr_const
 #[proc_macro]
@@ -607,29 +621,24 @@ impl syn::parse::Parse for Sgr {
 
 // =============================================================
 
-// /// A convenience macro for [`stdout`](std::io::stdout).
-// #[proc_macro]
-// pub fn out(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-//     parse_macro_input!(input as Out).tts.into()
-// }
-
-// struct Out {
-//     tts: proc_macro2::TokenStream,
-// }
-
-// impl syn::parse::Parse for Out {
-//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-//         let exprs = syn::punctuated::Punctuated::<syn::Expr, Token![,]>::parse_terminated(input)?
-//             .into_iter();
-//         let tts = quote! {{
-//             use std::io::Write;
-//             std::write!(std::io::stdout(), #(#exprs,)*).unwrap();
-//         }};
-//         Ok(Out { tts })
-//     }
-// }
-
 /// A convenience macro for [`stdout`](std::io::stdout).
+///
+/// ```rust
+/// etty::out!("{}{}hello world! {}", etty::ers_all(), etty::cus_home(), "你好世界!👋");
+/// etty::out!(etty::cus_next_ln(1));
+/// etty::out!(42);
+/// etty::out!('\x20');
+/// etty::out!('A');
+/// etty::flush();
+/// ```
+///
+/// Please be noted that we don't need string literal as the first argument if formatting isn't necessary.
+///
+/// ```rust
+/// etty::out!(42);        // do this
+/// etty::out!("{}", 42);  // instead of this
+/// ```
+///
 #[proc_macro]
 pub fn out(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     struct Out(proc_macro2::TokenStream);
@@ -646,7 +655,7 @@ pub fn out(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as Out).0.into()
 }
 
-/// A convenience macro for [`stdout`](std::io::stdout).
+/// Same with [`etty::macros::out!`](etty::macros::out!) but with newline.
 #[proc_macro]
 pub fn outln(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     struct Outln(proc_macro2::TokenStream);
@@ -663,7 +672,7 @@ pub fn outln(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as Outln).0.into()
 }
 
-/// A convenience macro for [`stdout`](std::io::stdout).
+/// Same with [`etty::macros::out!`](etty::macros::out!) but flush immediately.
 #[proc_macro]
 pub fn outf(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     struct Outf(proc_macro2::TokenStream);

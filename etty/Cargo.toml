@@ -1,10 +1,10 @@
 [package]
 name = "etty"
-description = "an easy tty library"
+description = "An easy tty library"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
-keywords = ["tty", "tui" ]
+keywords = ["tty", "tui"]
 readme = "README.md"
 authors = ["rueyxian <yrueyxian@gmail.com>"]
 

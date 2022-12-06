@@ -1,11 +1,6 @@
 //! Constants for building [Select Graphic Rendition][wiki-sgr] (SGR).
 //!
-//! These `u8` constants represent [SGR parameters][wiki-sgr]. It is expected to be used in conjunction with [etty_macros::sgr][mod-sgr] macro.
-//!
-//! ```rust
-//! let sgr = etty::sgr!(etty::STY_BOLD_SET, etty::FG_RED, etty::BG_BRGT_YEL);
-//! assert_eq!(sgr.to_string(), "\x1b[1;31;103m");
-//! ```
+//! These constants represent [SGR parameters][wiki-sgr]. It is expected to be used in conjunction with [`etty::macros::sgr!`][mod-sgr].
 //!
 //! [wiki-sgr]: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
 //! [mod-sgr]: etty_macros::sgr

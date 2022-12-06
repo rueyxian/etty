@@ -1,4 +1,4 @@
-//! A simple and easy tty library.
+//! An easy tty library.
 //!
 //! This library aim to be easy to use without being overly abstracted. Key components:
 //! * ANSI [CSI][wiki-csi] builder.
@@ -9,6 +9,18 @@
 //! [mod-output]: crate::output
 //! [mod-stdout]: std::io::stdout
 
+pub mod macros {
+    //! Convenience macros for [`stdout`][mod-stdout].
+    //!
+    //! Re-export from [`etty_macros`][mod-etty-macro].
+    //!
+    //! [mod-stdout]: std::io::stdout
+    //! [mod-etty-macro]: etty_macros
+    pub use etty_macros::*;
+}
+#[doc(hidden)]
+pub use macros::*;
+
 mod util;
 pub(crate) use crate::util::*;
 
@@ -17,11 +29,6 @@ mod unix;
 pub mod term;
 #[doc(hidden)]
 pub use term::*;
-// pub use term::raw_mode;
-// pub use term::term_mode;
-// pub use term::term_size;
-// pub use term::term_size_px;
-// pub use term::TermMode;
 
 mod input;
 
@@ -45,6 +52,4 @@ pub mod c0;
 #[doc(hidden)]
 pub use c0::C0;
 
-pub mod macros;
-#[doc(hidden)]
-pub use macros::*;
+// pub mod macros;

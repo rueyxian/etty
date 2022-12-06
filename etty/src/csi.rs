@@ -1,14 +1,12 @@
 //! Functions for building [Control Sequence Introducer][wiki] (CSI).
 //!  
 //! ```rust
-//! fn main() {
-//!     assert_eq!(etty::ers_all().to_string(), "\x1b[2J");
-//!     assert_eq!(etty::ers_char(3).to_string(), "\x1b[3J");
-//!     assert_eq!(etty::cus_goto(5, 15).to_string(), "\x1b[15;5H");
-//!     assert_eq!(etty::sty_blink_rst().to_string(), "\x1b[25m");
-//!     assert_eq!(etty::fg_rgb(42, 99, 123).to_string(), "\x1b[38;2;42;99;123m");
-//!     assert_eq!(etty::evt_mouse_set().to_string(), "\x1b[?1000h");
-//! }
+//! assert_eq!(etty::ers_all().to_string(), "\x1b[2J");
+//! assert_eq!(etty::ers_char(3).to_string(), "\x1b[3J");
+//! assert_eq!(etty::cus_goto(5, 15).to_string(), "\x1b[15;5H");
+//! assert_eq!(etty::sty_blink_rst().to_string(), "\x1b[25m");
+//! assert_eq!(etty::fg_rgb(42, 99, 123).to_string(), "\x1b[38;2;42;99;123m");
+//! assert_eq!(etty::evt_mouse_set().to_string(), "\x1b[?1000h");
 //! ```
 //!
 //! To learn more about ANSI CSI:

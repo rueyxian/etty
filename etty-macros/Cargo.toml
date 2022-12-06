@@ -1,10 +1,10 @@
 [package]
 name = "etty-macros"
-description = "macros for etty"
+description = "Procedural macros for etty"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
-keywords = ["tty", "tui", "macro" ]
+keywords = ["tty", "tui", "macros" ]
 readme = "README.md"
 authors = ["rueyxian <yrueyxian@gmail.com>"]
 
